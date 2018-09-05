@@ -3,21 +3,31 @@ use std::{fmt, io};
 use traits::BlockDevice;
 
 #[repr(C, packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct CHS {
-    // FIXME: Fill me in.
+    head: u8,
+    sector: u8,
+    cylinder: u8,
 }
 
 #[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct PartitionEntry {
-    // FIXME: Fill me in.
+    boot: u8,
+    chs_start: CHS,
+    part_type: u8,
+    chs_end: CHS,
+    relative_sector: u32,
+    total_sectors: u32,
 }
 
 /// The master boot record (MBR).
 #[repr(C, packed)]
 pub struct MasterBootRecord {
-    // FIXME: Fill me in.
+    bootstrap: [u8; 436],
+    disk_id: [u8; 10],
+    partition_table: [PartitionEntry; 4],
+    signature: [u8; 2],
 }
 
 #[derive(Debug)]
