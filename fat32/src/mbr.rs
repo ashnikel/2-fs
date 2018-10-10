@@ -1,4 +1,4 @@
-use std::{fmt, io};
+use std::{fmt, io, mem};
 
 use traits::BlockDevice;
 
@@ -30,6 +30,8 @@ pub struct MasterBootRecord {
     signature: [u8; 2],
 }
 
+const MBR_SIZE: usize = mem::size_of::<MasterBootRecord>();
+
 #[derive(Debug)]
 pub enum Error {
     /// There was an I/O error while reading the MBR.
@@ -50,7 +52,31 @@ impl MasterBootRecord {
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
     pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
-        unimplemented!("MasterBootRecord::from()")
+        let mut buf = [0u8; MBR_SIZE];
+
+        let mbr_size = match device.read_sector(0, &mut buf) {
+            Ok(size) => size,
+            Err(e) => return Err(Error::Io(e))
+        };
+
+        if mbr_size != MBR_SIZE {
+            return Err(Error::Io(io::Error::new(io::ErrorKind::UnexpectedEof, "bad MBR size")));
+        }
+
+        let mbr: MasterBootRecord = unsafe { mem::transmute(buf) };
+
+        if mbr.signature != [0x55, 0xAA] {
+            return Err(Error::BadSignature);
+        }
+
+        for i in 0..mbr.partition_table.len() {
+            if mbr.partition_table[i].boot != 0x00 &&
+               mbr.partition_table[i].boot != 0x80 {
+                   return Err(Error::UnknownBootIndicator(i as u8))
+               }
+        }
+
+        Ok(mbr)
     }
 }
 
