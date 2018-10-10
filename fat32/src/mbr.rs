@@ -82,6 +82,11 @@ impl MasterBootRecord {
 
 impl fmt::Debug for MasterBootRecord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!("MasterBootRecord::fmt()")
+        f.debug_struct("MasterBootRecord")
+            .field("bootstrap", &"<bootstrap>")
+            .field("disk_id", &self.disk_id)
+            .field("partition_table", &self.partition_table)
+            .field("signature", &self.signature)
+            .finish()
     }
 }
