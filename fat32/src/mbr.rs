@@ -90,3 +90,20 @@ impl fmt::Debug for MasterBootRecord {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+    use super::*;
+
+    #[test]
+    fn check_mbr_too_small() {
+        let mut data = [0u8; 511];
+        let result = MasterBootRecord::from(Cursor::new(&mut data[..]));
+
+        match result.expect_err("unexpected EOF") {
+            Error::Io(e) => assert_eq!(e.kind(), io::ErrorKind::UnexpectedEof),
+            _ => assert!(false, "unexpected error")
+        }
+    }
+}
