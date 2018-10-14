@@ -78,6 +78,22 @@ impl MasterBootRecord {
 
         Ok(mbr)
     }
+
+    /// Returns sector of first FAT32 partition on disk
+    pub fn first_fat32(&self) -> Result<&PartitionEntry, io::Error> {
+        for partition in self.partition_table.iter() {
+            if partition.part_type == 0xB || partition.part_type == 0xC {
+                return Ok(partition);
+            }
+        }
+        return Err(io::Error::new(io::ErrorKind::Other, "FAT32 partition not found"));
+    }
+}
+
+impl PartitionEntry {
+    pub fn sector(&self) -> u64 {
+        self.relative_sector as u64
+    }
 }
 
 impl fmt::Debug for MasterBootRecord {

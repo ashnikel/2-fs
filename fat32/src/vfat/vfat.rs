@@ -24,7 +24,26 @@ impl VFat {
     pub fn from<T>(mut device: T) -> Result<Shared<VFat>, Error>
         where T: BlockDevice + 'static
     {
-        unimplemented!("VFat::from()")
+        let mbr = MasterBootRecord::from(&mut device)?;
+        let sector = mbr.first_fat32()?.sector();
+        let ebpb = BiosParameterBlock::from(&mut device, sector)?;
+
+        let partition = Partition {
+            start: sector,
+            sector_size: ebpb.bytes_per_sector() as u64,
+        };
+
+        let cache_device = CachedDevice::new(device, partition);
+
+        Ok(Shared::new(VFat {
+            device: cache_device,
+            bytes_per_sector: ebpb.bytes_per_sector(),
+            sectors_per_cluster: ebpb.sectors_per_cluster(),
+            sectors_per_fat: ebpb.sectors_per_fat(),
+            fat_start_sector: ebpb.fat_start_sector(),
+            data_start_sector: ebpb.data_start_sector(),
+            root_dir_cluster: Cluster::from(ebpb.root_dir_cluster())
+        }))
     }
 
     // TODO: The following methods may be useful here:

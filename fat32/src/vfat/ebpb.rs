@@ -15,13 +15,13 @@ pub struct BiosParameterBlock {
     max_dir_entries: u16,
     logical_sectors_small: u16,
     fat_id: u8,
-    sectors_per_fat: u16,
+    sectors_per_fat16: u16,
     sectors_per_track: u16,
     heads: u16,
     hidden_sectors: u32,
     logical_sectors_big: u32,
     // EBPB
-    sectors_per_fat32: u32,
+    sectors_per_fat: u32,
     flags: u16,
     fat_ver: u16,
     root_dir_cluster: u32,
@@ -61,6 +61,31 @@ impl BiosParameterBlock {
 
         Ok(ebpb)
     }
+
+    pub fn bytes_per_sector(&self) -> u16 {
+        self.bytes_per_sector
+    }
+
+    pub fn sectors_per_cluster(&self) -> u8 {
+        self.sectors_per_cluster
+    }
+
+    pub fn sectors_per_fat(&self) -> u32 {
+        self.sectors_per_fat
+    }
+
+    pub fn fat_start_sector(&self) -> u64 {
+        self.sectors_reserved as u64
+    }
+
+    pub fn data_start_sector(&self) -> u64 {
+        self.fat_start_sector()
+            + self.fats_number as u64 * self.sectors_per_fat() as u64
+    }
+
+    pub fn root_dir_cluster(&self) -> u32 {
+        self.root_dir_cluster
+    }
 }
 
 impl fmt::Debug for BiosParameterBlock {
@@ -75,12 +100,12 @@ impl fmt::Debug for BiosParameterBlock {
             .field("max_dir_entries", &self.max_dir_entries)
             .field("logical_sectors_small", &self.logical_sectors_small)
             .field("fat_id", &self.fat_id)
-            .field("sectors_per_fat", &self.sectors_per_fat)
+            .field("sectors_per_fat16", &self.sectors_per_fat16)
             .field("sectors_per_track", &self.sectors_per_track)
             .field("heads", &self.heads)
             .field("hidden_sectors", &self.hidden_sectors)
             .field("logical_sectors_big", &self.logical_sectors_big)
-            .field("sectors_per_fat32", &self.sectors_per_fat32)
+            .field("sectors_per_fat", &self.sectors_per_fat)
             .field("flags", &self.flags)
             .field("fat_ver", &self.fat_ver)
             .field("root_dir_cluster", &self.root_dir_cluster)
