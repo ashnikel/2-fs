@@ -9,4 +9,12 @@ impl From<u32> for Cluster {
     }
 }
 
-// TODO: Implement any useful helper methods on `Cluster`.
+impl Cluster {
+    pub fn fat_index(&self) -> u32 {
+        self.0
+    }
+
+    pub fn data_index(&self) -> Option<u32> {
+        self.0.checked_sub(2)
+    }
+}

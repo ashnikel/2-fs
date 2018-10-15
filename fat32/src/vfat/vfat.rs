@@ -46,16 +46,15 @@ impl VFat {
         }))
     }
 
-    // TODO: The following methods may be useful here:
-    //
-    //  * A method to read from an offset of a cluster into a buffer.
-    //
-    //    fn read_cluster(
-    //        &mut self,
-    //        cluster: Cluster,
-    //        offset: usize,
-    //        buf: &mut [u8]
-    //    ) -> io::Result<usize>;
+    /// A method to read from an offset of a cluster into a buffer.
+    fn read_cluster(
+        &mut self,
+        cluster: Cluster,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> io::Result<usize> {
+        
+    }
     //
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
@@ -66,10 +65,23 @@ impl VFat {
     //        buf: &mut Vec<u8>
     //    ) -> io::Result<usize>;
     //
-    //  * A method to return a reference to a `FatEntry` for a cluster where the
-    //    reference points directly into a cached sector.
-    //
-    //    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry>;
+
+    /// A method to return a reference to a `FatEntry` for a cluster where the
+    /// reference points directly into a cached sector.
+    fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
+        let cluster_index = cluster.fat_index() as usize;
+        let fat_entries_per_sector = self.bytes_per_sector as usize
+                                     / ::std::mem::size_of::<FatEntry>();
+
+        let sector_of_fat_entry = cluster_index / fat_entries_per_sector;
+
+        let sector = self.device.get(self.fat_start_sector
+                                     + sector_of_fat_entry as u64)?;
+        let fat_entries: &[FatEntry] = unsafe { sector.cast() };
+
+        let fat_entry_index_in_sector = cluster_index % fat_entries_per_sector;
+        Ok(&fat_entries[fat_entry_index_in_sector])
+    }
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {

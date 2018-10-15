@@ -33,7 +33,7 @@ impl FatEntry {
             0x0FFFFFF0 ... 0x0FFFFFF6 => Status::Reserved,
             0x0FFFFFF7 => Status::Bad,
             0x0FFFFFF8 ... 0x0FFFFFFF => Status::Eoc(self.0),
-            _ => Status::Reserved,
+            _ => unreachable!(),
         }
     }
 }
