@@ -53,9 +53,26 @@ impl VFat {
         offset: usize,
         buf: &mut [u8],
     ) -> io::Result<usize> {
-        
+
+        let first_sector_of_cluster = self.data_start_sector
+            + cluster.data_index()? as u64 * self.sectors_per_cluster as u64;
+        let last_sector_of_cluster = first_sector_of_cluster
+            + self.sectors_per_cluster as u64;
+
+        let start_sector = first_sector_of_cluster + offset as u64;
+
+        let buf_size_in_sectors = buf.len() as u64 / self.bytes_per_sector as u64;
+        let last_sector_to_read =
+            min(last_sector_of_cluster, start_sector + buf_size_in_sectors);
+
+        let mut read = 0;
+        for sec in start_sector .. last_sector_to_read {
+            read += self.device.read_sector(sec, &mut buf[read..])?;
+        }
+
+        Ok(read)
     }
-    //
+
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
     //

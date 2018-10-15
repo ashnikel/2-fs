@@ -1,3 +1,4 @@
+use std::io;
 use vfat::*;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
@@ -14,7 +15,10 @@ impl Cluster {
         self.0
     }
 
-    pub fn data_index(&self) -> Option<u32> {
-        self.0.checked_sub(2)
+    pub fn data_index(&self) -> io::Result<u32> {
+        match self.0.checked_sub(2) {
+            Some(n) => Ok(n),
+            None => Err(io::Error::new(io::ErrorKind::Other, "cluster number must be > 2")),
+        }
     }
 }
