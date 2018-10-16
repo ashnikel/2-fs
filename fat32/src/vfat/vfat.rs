@@ -73,15 +73,38 @@ impl VFat {
         Ok(read)
     }
 
-    //  * A method to read all of the clusters chained from a starting cluster
-    //    into a vector.
-    //
-    //    fn read_chain(
-    //        &mut self,
-    //        start: Cluster,
-    //        buf: &mut Vec<u8>
-    //    ) -> io::Result<usize>;
-    //
+    /// A method to read all of the clusters chained from a starting cluster
+    /// into a vector.
+    fn read_chain(
+        &mut self,
+        start: Cluster,
+        buf: &mut Vec<u8>
+    ) -> io::Result<usize> {
+
+        let mut cluster = start;
+        let mut read = 0;
+
+        while let Status::Data(next_cluster) = self.fat_entry(cluster)?.status() {
+            read += self.read_cluster(cluster, 0, &mut buf[read..])?;
+            cluster = next_cluster;
+        }
+
+        match self.fat_entry(cluster)?.status() {
+            Status::Eoc(eoc) => {
+                read += self.read_cluster(cluster, 0, &mut buf[read..])?;
+            },
+            Status::Free  => return Err(io::Error::new(io::ErrorKind::Other,
+                "can't read from free sector")),
+            Status::Bad => return Err(io::Error::new(io::ErrorKind::Other,
+                "can't read from bad sector")),
+            Status::Reserved => return Err(io::Error::new(io::ErrorKind::Other,
+                "can't read from reserved sector")),
+            Status::Data(next_cluster) => unreachable!(),
+        }
+
+        Ok(read)
+    }
+
 
     /// A method to return a reference to a `FatEntry` for a cluster where the
     /// reference points directly into a cached sector.
