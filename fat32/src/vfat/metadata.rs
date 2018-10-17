@@ -21,13 +21,16 @@ pub struct Attributes(u8);
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Timestamp {
     pub date: Date,
-    pub time: Time
+    pub time: Time,
 }
 
 /// Metadata for a directory entry.
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
-    // FIXME: Fill me in.
+    pub attr: Attributes,
+    pub created: Timestamp,
+    pub accessed: Timestamp,
+    pub modified: Timestamp,
 }
 
 impl traits::Timestamp for Timestamp {
@@ -66,6 +69,34 @@ impl traits::Timestamp for Timestamp {
     }
 }
 
-// FIXME: Implement `traits::Metadata` for `Metadata`.
+impl traits::Metadata for Metadata {
+    /// Type corresponding to a point in time.
+    type Timestamp = Timestamp;
+
+    /// Whether the associated entry is read only.
+    fn read_only(&self) -> bool {
+        self.attr.0 & 0x01 == 0x01
+    }
+
+    /// Whether the entry should be "hidden" from directory traversals.
+    fn hidden(&self) -> bool{
+        self.attr.0 & 0x02 == 0x02
+    }
+
+    /// The timestamp when the entry was created.
+    fn created(&self) -> Self::Timestamp {
+        self.created
+    }
+
+    /// The timestamp for the entry's last access.
+    fn accessed(&self) -> Self::Timestamp {
+        self.accessed
+    }
+
+    /// The timestamp for the entry's last modification.
+    fn modified(&self) -> Self::Timestamp {
+        self.modified
+    }
+}
 
 // FIXME: Implement `fmt::Display` (to your liking) for `Metadata`.
