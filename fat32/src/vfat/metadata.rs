@@ -99,4 +99,22 @@ impl traits::Metadata for Metadata {
     }
 }
 
-// FIXME: Implement `fmt::Display` (to your liking) for `Metadata`.
+impl fmt::Display for Metadata {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use traits::{ Metadata, Timestamp };
+
+        let r = if self.read_only() {
+            'R'
+        } else {
+            '-'
+        };
+        let h = if self.hidden() {
+            'H'
+        } else {
+            '-'
+        };
+        write!(f, "{}{} {}.{}.{} {}:{}:{}", r, h,
+            self.created().day(), self.created().month(), self.created().year(),
+            self.created().hour(), self.created().minute(), self.created().second())
+    }
+}
