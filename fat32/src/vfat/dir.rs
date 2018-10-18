@@ -10,25 +10,47 @@ use vfat::{Metadata, Attributes, Timestamp, Time, Date};
 
 #[derive(Debug)]
 pub struct Dir {
-    // FIXME: Fill me in.
+    cluster: Cluster,
+    vfat: Shared<VFat>,
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatRegularDirEntry {
-    // FIXME: Fill me in.
+    name: [u8; 8],
+    ext: [u8; 3],
+    attr: u8,
+    reserved: u8,
+    ctime_fine: u8,
+    ctime: u16,
+    cdate: u16,
+    adate: u16,
+    cluster_hi: u16,
+    mtime: u16,
+    mdate: u16,
+    cluster_lo: u16,
+    size: u32,
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatLfnDirEntry {
-    // FIXME: Fill me in.
+    seq_number: u8,
+    name1: [u16; 5],
+    attr: u8,
+    lfn_type: u8,
+    checksum: u8,
+    name2: [u16; 6],
+    zero_pad: u16,
+    name3: [u16; 2],
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatUnknownDirEntry {
-    // FIXME: Fill me in.
+    unknown1: [u8; 11],
+    attr: u8,
+    unknown2: [u8; 20],
 }
 
 pub union VFatDirEntry {
