@@ -1,4 +1,4 @@
-use std::{io, fmt};
+use std::{fmt, io};
 use std::cmp::min;
 use std::collections::HashMap;
 
@@ -7,20 +7,20 @@ use traits::BlockDevice;
 #[derive(Debug)]
 struct CacheEntry {
     data: Vec<u8>,
-    dirty: bool
+    dirty: bool,
 }
 
 pub struct Partition {
     /// The physical sector where the partition begins.
     pub start: u64,
     /// The size, in bytes, of a logical sector in the partition.
-    pub sector_size: u64
+    pub sector_size: u64,
 }
 
 pub struct CachedDevice {
     device: Box<BlockDevice>,
     cache: HashMap<u64, CacheEntry>,
-    partition: Partition
+    partition: Partition,
 }
 
 impl CachedDevice {
@@ -44,14 +44,15 @@ impl CachedDevice {
     ///
     /// Panics if the partition's sector size is < the device's sector size.
     pub fn new<T>(device: T, partition: Partition) -> CachedDevice
-        where T: BlockDevice + 'static
+    where
+        T: BlockDevice + 'static,
     {
         assert!(partition.sector_size >= device.sector_size());
 
         CachedDevice {
             device: Box::new(device),
             cache: HashMap::new(),
-            partition: partition
+            partition: partition,
         }
     }
 
@@ -76,10 +77,16 @@ impl CachedDevice {
             // not cached yet
             let (ph_sector, num_sectors) = self.virtual_to_physical(sector);
             let mut buf = Vec::new();
-            for sec in ph_sector .. ph_sector + num_sectors {
+            for sec in ph_sector..ph_sector + num_sectors {
                 self.device.read_all_sector(sec, &mut buf)?;
             }
-            self.cache.insert(sector, CacheEntry { data: buf, dirty: true });
+            self.cache.insert(
+                sector,
+                CacheEntry {
+                    data: buf,
+                    dirty: true,
+                },
+            );
         }
         Ok(())
     }
@@ -101,8 +108,10 @@ impl CachedDevice {
             entry.dirty = true;
             return Ok(&mut entry.data[..]);
         } else {
-            return Err(io::Error::new(io::ErrorKind::Other,
-                                        "can't read sector from disk"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "can't read sector from disk",
+            ));
         }
     }
 
@@ -118,8 +127,10 @@ impl CachedDevice {
         if let Some(entry) = self.cache.get(&sector) {
             return Ok(&entry.data[..]);
         } else {
-            return Err(io::Error::new(io::ErrorKind::Other,
-                                        "can't read sector from disk"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "can't read sector from disk",
+            ));
         }
     }
 }
@@ -131,17 +142,16 @@ impl BlockDevice for CachedDevice {
         let sec = self.get(n)?;
         let len = min(sec.len(), buf.len());
         buf[..len].copy_from_slice(&sec[..len]);
-        return Ok(len)
+        Ok(len)
     }
 
     fn write_sector(&mut self, n: u64, buf: &[u8]) -> io::Result<usize> {
         let sec = self.get_mut(n)?;
         let len = min(sec.len(), buf.len());
         sec[..len].copy_from_slice(&buf[..len]);
-        return Ok(len)
+        Ok(len)
     }
 }
-
 
 impl fmt::Debug for CachedDevice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

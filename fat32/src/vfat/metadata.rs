@@ -49,7 +49,7 @@ impl traits::Timestamp for Timestamp {
     }
 
     /// The calendar day, starting at 1. Always in range [1, 31].
-    fn day(&self) ->u8 {
+    fn day(&self) -> u8 {
         (self.date.0 & 0b0000_0000_0001_1111) as u8 + 1
     }
 
@@ -79,7 +79,7 @@ impl traits::Metadata for Metadata {
     }
 
     /// Whether the entry should be "hidden" from directory traversals.
-    fn hidden(&self) -> bool{
+    fn hidden(&self) -> bool {
         self.attr.0 & 0x02 == 0x02
     }
 
@@ -101,20 +101,21 @@ impl traits::Metadata for Metadata {
 
 impl fmt::Display for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use traits::{ Metadata, Timestamp };
+        use traits::{Metadata, Timestamp};
 
-        let r = if self.read_only() {
-            'R'
-        } else {
-            '-'
-        };
-        let h = if self.hidden() {
-            'H'
-        } else {
-            '-'
-        };
-        write!(f, "{}{} {}.{}.{} {}:{}:{}", r, h,
-            self.created().day(), self.created().month(), self.created().year(),
-            self.created().hour(), self.created().minute(), self.created().second())
+        let r = if self.read_only() { 'R' } else { '-' };
+        let h = if self.hidden() { 'H' } else { '-' };
+        write!(
+            f,
+            "{}{} {}.{}.{} {}:{}:{}",
+            r,
+            h,
+            self.created().day(),
+            self.created().month(),
+            self.created().year(),
+            self.created().hour(),
+            self.created().minute(),
+            self.created().second()
+        )
     }
 }

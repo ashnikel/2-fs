@@ -1,17 +1,19 @@
 use std::ffi::OsStr;
-use std::char::decode_utf16;
+use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use std::borrow::Cow;
 use std::io;
 
 use traits;
 use util::VecExt;
-use vfat::{VFat, Shared, File, Cluster, Entry};
-use vfat::{Metadata, Attributes, Timestamp, Time, Date};
+use vfat::{Cluster, Entry, File, Shared, VFat};
+use vfat::{Attributes, Date, Metadata, Time, Timestamp};
 
 #[derive(Debug)]
 pub struct Dir {
+    name: String,
     cluster: Cluster,
     vfat: Shared<VFat>,
+    metadata: Metadata,
 }
 
 #[repr(C, packed)]
@@ -48,7 +50,8 @@ pub struct VFatLfnDirEntry {
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatUnknownDirEntry {
-    unknown1: [u8; 11],
+    id: u8, // 0x00 - end of dir, 0xE5 - deleted/unused dir, other - regular dir or LFN
+    unknown1: [u8; 10],
     attr: u8,
     unknown2: [u8; 20],
 }
@@ -57,6 +60,91 @@ pub union VFatDirEntry {
     unknown: VFatUnknownDirEntry,
     regular: VFatRegularDirEntry,
     long_filename: VFatLfnDirEntry,
+}
+
+pub struct EntryIter {
+    entries: Vec<VFatDirEntry>,
+    index: usize,
+    vfat: Shared<VFat>,
+}
+
+impl VFatUnknownDirEntry {
+    pub fn is_deleted(&self) -> bool {
+        self.id == 0xE5
+    }
+
+    pub fn is_end(&self) -> bool {
+        self.id == 0x00
+    }
+
+    pub fn is_dir(&self) -> bool {
+        !self.is_deleted() && !self.is_end()
+    }
+
+    pub fn is_lfn(&self) -> bool {
+        self.is_dir() && self.attr == 0x0F
+    }
+
+    pub fn is_regular(&self) -> bool {
+        self.is_dir() && !self.is_lfn()
+    }
+}
+
+impl VFatLfnDirEntry {
+    pub fn is_last(&self) -> bool {
+        self.seq_number & (1 << 6) != 0
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        self.seq_number == 0xE5
+    }
+}
+
+impl Iterator for EntryIter {
+    type Item = Entry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut unknown_entry = unsafe { self.entries[self.index].unknown };
+
+        while !unknown_entry.is_end() {
+            if unknown_entry.is_deleted() {
+                self.index += 1;
+                unknown_entry = unsafe { self.entries[self.index].unknown };
+                continue;
+            }
+
+            // 13 (5+6+2) characters in LFN entry. Up to 20 LFN entries can be chained.
+            let mut lfn_name = [0u16; 13 * 20];
+            let mut lfn_found = false;
+
+            while unknown_entry.is_lfn() {
+                let lfn = unsafe { self.entries[self.index].long_filename };
+                if !lfn.is_deleted() {
+                    lfn_found = true;
+                    let pos = ((lfn.seq_number & 0b11111) as usize - 1) * 13;
+                    lfn_name[pos..pos + 5].copy_from_slice(&lfn.name1);
+                    lfn_name[pos + 5..pos + 11].copy_from_slice(&lfn.name2);
+                    lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
+                }
+                self.index += 1;
+                unknown_entry = unsafe { self.entries[self.index].unknown };
+            }
+
+            let name = if lfn_found {
+                // File name can be terminated using 0x00 or 0xFF
+                decode_utf16(
+                    lfn_name
+                        .iter()
+                        .take_while(|x| **x != 0x00 && **x != 0xFF)
+                        .cloned(),
+                ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+                    .collect::<String>()
+            } else {
+                String::new()
+            };
+        }
+        None
+    }
 }
 
 impl Dir {
@@ -75,4 +163,16 @@ impl Dir {
     }
 }
 
-// FIXME: Implement `trait::Dir` for `Dir`.
+// impl traits::Dir for Dir {
+//     /// The type of entry stored in this directory.
+//     type Entry = Entry;
+
+//     /// An type that is an iterator over the entries in this directory.
+//     type Iter = EntryIter;
+
+//     /// Returns an interator over the entries in this directory.
+//     fn entries(&self) -> io::Result<Self::Iter> {
+//         let mut buf = Vec::new();
+//         self.vfat.borrow_mut().read_chain(self.cluster, &mut buf)?;
+//     }
+// }

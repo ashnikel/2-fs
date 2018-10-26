@@ -18,7 +18,10 @@ impl Cluster {
     pub fn data_index(&self) -> io::Result<u32> {
         match self.0.checked_sub(2) {
             Some(n) => Ok(n),
-            None => Err(io::Error::new(io::ErrorKind::Other, "cluster number must be > 2")),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "cluster number must be > 2",
+            )),
         }
     }
 }

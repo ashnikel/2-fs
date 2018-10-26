@@ -16,7 +16,7 @@ pub enum Status {
     Bad,
     /// The FAT entry corresponds to a valid data cluster. The corresponding
     /// cluster is the last in its chain.
-    Eoc(u32)
+    Eoc(u32),
 }
 
 #[repr(C, packed)]
@@ -29,10 +29,10 @@ impl FatEntry {
         match val {
             0x00000000 => Status::Free,
             0x00000001 => Status::Reserved,
-            0x00000002 ... 0x0FFFFFEF => Status::Data(Cluster::from(self.0)),
-            0x0FFFFFF0 ... 0x0FFFFFF6 => Status::Reserved,
+            0x00000002...0x0FFFFFEF => Status::Data(Cluster::from(self.0)),
+            0x0FFFFFF0...0x0FFFFFF6 => Status::Reserved,
             0x0FFFFFF7 => Status::Bad,
-            0x0FFFFFF8 ... 0x0FFFFFFF => Status::Eoc(self.0),
+            0x0FFFFFF8...0x0FFFFFFF => Status::Eoc(self.0),
             _ => unreachable!(),
         }
     }

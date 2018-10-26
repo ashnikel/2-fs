@@ -47,10 +47,7 @@ impl BiosParameterBlock {
     /// # Errors
     ///
     /// If the EBPB signature is invalid, returns an error of `BadSignature`.
-    pub fn from<T: BlockDevice>(
-        mut device: T,
-        sector: u64
-    ) -> Result<BiosParameterBlock, Error> {
+    pub fn from<T: BlockDevice>(mut device: T, sector: u64) -> Result<BiosParameterBlock, Error> {
         let mut buf = [0u8; EBPB_SIZE];
         let _ebpb_size = device.read_sector(sector, &mut buf)?;
         let ebpb: BiosParameterBlock = unsafe { mem::transmute(buf) };
@@ -79,8 +76,7 @@ impl BiosParameterBlock {
     }
 
     pub fn data_start_sector(&self) -> u64 {
-        self.fat_start_sector()
-            + self.fats_number as u64 * self.sectors_per_fat() as u64
+        self.fat_start_sector() + self.fats_number as u64 * self.sectors_per_fat() as u64
     }
 
     pub fn root_dir_cluster(&self) -> u32 {

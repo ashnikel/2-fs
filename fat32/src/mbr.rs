@@ -56,11 +56,14 @@ impl MasterBootRecord {
 
         let mbr_size = match device.read_sector(0, &mut buf) {
             Ok(size) => size,
-            Err(e) => return Err(Error::Io(e))
+            Err(e) => return Err(Error::Io(e)),
         };
 
         if mbr_size != MBR_SIZE {
-            return Err(Error::Io(io::Error::new(io::ErrorKind::UnexpectedEof, "bad MBR size")));
+            return Err(Error::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "bad MBR size",
+            )));
         }
 
         let mbr: MasterBootRecord = unsafe { mem::transmute(buf) };
@@ -70,10 +73,9 @@ impl MasterBootRecord {
         }
 
         for i in 0..mbr.partition_table.len() {
-            if mbr.partition_table[i].boot != 0x00 &&
-               mbr.partition_table[i].boot != 0x80 {
-                   return Err(Error::UnknownBootIndicator(i as u8))
-               }
+            if mbr.partition_table[i].boot != 0x00 && mbr.partition_table[i].boot != 0x80 {
+                return Err(Error::UnknownBootIndicator(i as u8));
+            }
         }
 
         Ok(mbr)
@@ -86,7 +88,10 @@ impl MasterBootRecord {
                 return Ok(partition);
             }
         }
-        return Err(io::Error::new(io::ErrorKind::Other, "FAT32 partition not found"));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "FAT32 partition not found",
+        ));
     }
 }
 
@@ -119,7 +124,7 @@ mod tests {
 
         match result.expect_err("unexpected EOF") {
             Error::Io(e) => assert_eq!(e.kind(), io::ErrorKind::UnexpectedEof),
-            _ => assert!(false, "unexpected error")
+            _ => assert!(false, "unexpected error"),
         }
     }
 }
