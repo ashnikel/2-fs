@@ -130,12 +130,14 @@ impl Iterator for EntryIter {
                 unknown_entry = unsafe { self.entries[self.index].unknown };
             }
 
+            //TODO regular entry
+
             let name = if lfn_found {
-                // File name can be terminated using 0x00 or 0xFF
+                // File name can be terminated using 0x0000 or 0xFFFF
                 decode_utf16(
                     lfn_name
                         .iter()
-                        .take_while(|x| **x != 0x00 && **x != 0xFF)
+                        .take_while(|x| **x != 0x0000 && **x != 0xFFFF)
                         .cloned(),
                 ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
                     .collect::<String>()
