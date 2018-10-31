@@ -100,11 +100,41 @@ impl VFatLfnDirEntry {
     }
 }
 
+pub fn u8_to_string(arr: &[u8]) -> Option<String> {
+    let s = arr
+        .iter()
+        .take_while(|x| **x != 0x00 && **x != 0x20)
+        .map(|&c| c as char)
+        .collect::<String>();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
 impl Iterator for EntryIter {
     type Item = Entry;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut unknown_entry = unsafe { self.entries[self.index].unknown };
+
+        // 13 (5+6+2) characters in LFN entry. Up to 20 LFN entries can be chained.
+        let mut lfn_name = [0u16; 13 * 20];
+        let mut lfn_found = false;
+
+        while unknown_entry.is_lfn() {
+            let lfn = unsafe { self.entries[self.index].long_filename };
+            if !lfn.is_deleted() {
+                lfn_found = true;
+                let pos = ((lfn.seq_number & 0b11111) as usize - 1) * 13;
+                lfn_name[pos..pos + 5].copy_from_slice(&lfn.name1);
+                lfn_name[pos + 5..pos + 11].copy_from_slice(&lfn.name2);
+                lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
+            }
+            self.index += 1;
+            unknown_entry = unsafe { self.entries[self.index].unknown };
+        }
 
         while !unknown_entry.is_end() {
             if unknown_entry.is_deleted() {
@@ -113,27 +143,11 @@ impl Iterator for EntryIter {
                 continue;
             }
 
-            // 13 (5+6+2) characters in LFN entry. Up to 20 LFN entries can be chained.
-            let mut lfn_name = [0u16; 13 * 20];
-            let mut lfn_found = false;
-
-            while unknown_entry.is_lfn() {
-                let lfn = unsafe { self.entries[self.index].long_filename };
-                if !lfn.is_deleted() {
-                    lfn_found = true;
-                    let pos = ((lfn.seq_number & 0b11111) as usize - 1) * 13;
-                    lfn_name[pos..pos + 5].copy_from_slice(&lfn.name1);
-                    lfn_name[pos + 5..pos + 11].copy_from_slice(&lfn.name2);
-                    lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
-                }
-                self.index += 1;
-                unknown_entry = unsafe { self.entries[self.index].unknown };
-            }
-
             //TODO regular entry
+            let regular = unsafe { self.entries[self.index].regular };
 
             let name = if lfn_found {
-                // File name can be terminated using 0x0000 or 0xFFFF
+                // File name in LFN entry can be terminated using 0x0000 or 0xFFFF
                 decode_utf16(
                     lfn_name
                         .iter()
@@ -142,7 +156,24 @@ impl Iterator for EntryIter {
                 ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
                     .collect::<String>()
             } else {
-                String::new()
+                match u8_to_string(&regular.ext) {
+                    None => {
+                        u8_to_string(&regular.name).unwrap()
+                    }
+                    Some(ext) => {
+                        let mut s = u8_to_string(&regular.name).unwrap();
+                        s.push_str(".");
+                        s.push_str(&ext);
+                        s
+                    }
+                }
+                // regular
+                //     .name
+                //     .iter()
+                //     .take_while(|x| **x != 0x00 && **x != 0x20)
+                //     .map(|&c| c as char)
+                //     .collect::<String>()
+                // + . + ext
             };
         }
         None
