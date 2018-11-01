@@ -6,7 +6,11 @@ use vfat::{Cluster, Metadata, Shared, VFat};
 
 #[derive(Debug)]
 pub struct File {
-    // FIXME: Fill me in.
+    pub name: String,
+    pub cluster: Cluster,
+    pub vfat: Shared<VFat>,
+    pub metadata: Metadata,
+    pub size: u32,
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.

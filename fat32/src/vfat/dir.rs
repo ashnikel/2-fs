@@ -21,15 +21,15 @@ pub struct Dir {
 pub struct VFatRegularDirEntry {
     name: [u8; 8],
     ext: [u8; 3],
-    attr: u8,
+    attr: Attributes,
     reserved: u8,
     ctime_fine: u8,
-    ctime: u16,
-    cdate: u16,
-    adate: u16,
+    ctime: Time,
+    cdate: Date,
+    adate: Date,
     cluster_hi: u16,
-    mtime: u16,
-    mdate: u16,
+    mtime: Time,
+    mdate: Date,
     cluster_lo: u16,
     size: u32,
 }
@@ -39,7 +39,7 @@ pub struct VFatRegularDirEntry {
 pub struct VFatLfnDirEntry {
     seq_number: u8,
     name1: [u16; 5],
-    attr: u8,
+    attr: Attributes,
     lfn_type: u8,
     checksum: u8,
     name2: [u16; 6],
@@ -77,16 +77,41 @@ impl VFatUnknownDirEntry {
         self.id == 0x00
     }
 
-    pub fn is_dir(&self) -> bool {
-        !self.is_deleted() && !self.is_end()
-    }
-
     pub fn is_lfn(&self) -> bool {
-        self.is_dir() && self.attr == 0x0F
+        self.attr == 0x0F
     }
 
     pub fn is_regular(&self) -> bool {
-        self.is_dir() && !self.is_lfn()
+        !self.is_lfn()
+    }
+}
+
+impl VFatRegularDirEntry {
+    pub fn metadata(&self) -> Metadata {
+        Metadata {
+            attr: self.attr,
+            created: Timestamp {
+                date: self.cdate,
+                time: self.ctime,
+            },
+            accessed: Timestamp {
+                date: self.adate,
+                time: Time(0),
+            },
+            modified: Timestamp {
+                date: self.mdate,
+                time: self.mtime,
+            },
+        }
+    }
+
+    pub fn cluster(&self) -> Cluster {
+        let cluster = ((self.cluster_hi as u32) << 16) | self.cluster_lo as u32;
+        Cluster::from(cluster)
+    }
+
+    pub fn is_dir(&self) -> bool {
+        self.attr.0 as u8 & 0x10 != 0
     }
 }
 
@@ -152,7 +177,6 @@ impl Iterator for EntryIter {
                 continue;
             }
 
-            //TODO regular entry
             let regular = unsafe { self.entries[self.index].regular };
 
             let name = if lfn_found {
@@ -162,15 +186,34 @@ impl Iterator for EntryIter {
                     None => ascii_to_string(&regular.name).unwrap(),
                     Some(ext) => {
                         let mut s = ascii_to_string(&regular.name).unwrap();
-                        s.push_str(".");
+                        s.push('.');
                         s.push_str(&ext);
                         s
                     }
                 }
             };
 
-            
+            let metadata = regular.metadata();
+            let cluster = regular.cluster();
+
+            if regular.is_dir() {
+                return Some(Entry::Dir(Dir{
+                    name,
+                    cluster,
+                    vfat: self.vfat.clone(),
+                    metadata,
+                }));
+            } else {
+                return Some(Entry::File(File{
+                    name,
+                    cluster,
+                    vfat: self.vfat.clone(),
+                    metadata,
+                    size: regular.size,
+                }));
+            }
         }
+
         None
     }
 }

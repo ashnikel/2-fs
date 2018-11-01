@@ -52,7 +52,7 @@ impl BiosParameterBlock {
         let _ebpb_size = device.read_sector(sector, &mut buf)?;
         let ebpb: BiosParameterBlock = unsafe { mem::transmute(buf) };
 
-        if ebpb.signature != 0x28 && ebpb.signature != 0x29 {
+        if ebpb.bootable_signature != 0xAA55 {
             return Err(Error::BadSignature);
         }
 
