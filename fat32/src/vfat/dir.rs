@@ -100,9 +100,18 @@ impl VFatLfnDirEntry {
     }
 }
 
-pub fn u8_to_string(arr: &[u8]) -> Option<String> {
-    let s = arr
-        .iter()
+pub fn ucs_2_to_string(arr: &[u16]) -> String {
+    // File name in LFN entry can be terminated using 0x0000 or 0xFFFF
+    decode_utf16(
+        arr.iter()
+            .take_while(|x| **x != 0x0000 && **x != 0xFFFF)
+            .cloned(),
+    ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+    .collect::<String>()
+}
+
+pub fn ascii_to_string(arr: &[u8]) -> Option<String> {
+    let s = arr.iter()
         .take_while(|x| **x != 0x00 && **x != 0x20)
         .map(|&c| c as char)
         .collect::<String>();
@@ -147,34 +156,20 @@ impl Iterator for EntryIter {
             let regular = unsafe { self.entries[self.index].regular };
 
             let name = if lfn_found {
-                // File name in LFN entry can be terminated using 0x0000 or 0xFFFF
-                decode_utf16(
-                    lfn_name
-                        .iter()
-                        .take_while(|x| **x != 0x0000 && **x != 0xFFFF)
-                        .cloned(),
-                ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-                    .collect::<String>()
+                ucs_2_to_string(&lfn_name)
             } else {
-                match u8_to_string(&regular.ext) {
-                    None => {
-                        u8_to_string(&regular.name).unwrap()
-                    }
+                match ascii_to_string(&regular.ext) {
+                    None => ascii_to_string(&regular.name).unwrap(),
                     Some(ext) => {
-                        let mut s = u8_to_string(&regular.name).unwrap();
+                        let mut s = ascii_to_string(&regular.name).unwrap();
                         s.push_str(".");
                         s.push_str(&ext);
                         s
                     }
                 }
-                // regular
-                //     .name
-                //     .iter()
-                //     .take_while(|x| **x != 0x00 && **x != 0x20)
-                //     .map(|&c| c as char)
-                //     .collect::<String>()
-                // + . + ext
             };
+
+            
         }
         None
     }
@@ -209,3 +204,25 @@ impl Dir {
 //         self.vfat.borrow_mut().read_chain(self.cluster, &mut buf)?;
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ascii_to_string() {
+        let arr: [u8; 8] = [0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x20, 0x4F, 0x00];
+        assert_eq!(ascii_to_string(&arr), Some("HELLO".to_string()));
+
+        let arr: [u8; 8] = [0x00, 0x45, 0x4C, 0x4C, 0x4F, 0x20, 0x00, 0x00];
+        assert_eq!(ascii_to_string(&arr), None);
+    }
+
+    #[test]
+    fn test_ucs_2_to_string() {
+        let arr = [
+            0xD834, 0x041F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442, 0xDD1E, 0x0000, 0x0072
+        ];
+        assert_eq!(ucs_2_to_string(&arr), "�Привет�".to_string());
+    }
+}
