@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+// use std::cmp::{max, min};
 use std::io::{self, SeekFrom};
 
 use traits;
@@ -14,11 +14,11 @@ pub struct File {
 }
 
 impl File {
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    fn metadata(&self) -> &Metadata {
+    pub fn metadata(&self) -> &Metadata {
         &self.metadata
     }
 }
@@ -27,7 +27,7 @@ impl File {
 impl traits::File for File {
     /// Writes any buffered data to disk.
     fn sync(&mut self) -> io::Result<()> {
-        unimplemented!()
+        Ok(())
     }
 
     /// Returns the size of the file in bytes.
@@ -37,18 +37,18 @@ impl traits::File for File {
 }
 
 impl io::Read for File {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
         unimplemented!()
     }
 }
 
 impl io::Write for File {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
         unimplemented!()
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        unimplemented!()
+        Ok(())
     }
 }
 
@@ -66,7 +66,7 @@ impl io::Seek for File {
     ///
     /// Seeking before the start of a file or beyond the end of the file results
     /// in an `InvalidInput` error.
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+    fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
         unimplemented!("File::seek()")
     }
 }

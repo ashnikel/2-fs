@@ -17,12 +17,18 @@ impl traits::Entry for Entry {
 
     /// The name of the file or directory corresponding to this entry.
     fn name(&self) -> &str {
-        self.name()
+        match self {
+            &Entry::Dir(ref d) => d.name(),
+            &Entry::File(ref f) => f.name(),
+        }
     }
 
     /// The metadata associated with the entry.
     fn metadata(&self) -> &Self::Metadata {
-        self.metadata()
+        match self {
+            &Entry::Dir(ref d) => d.metadata(),
+            &Entry::File(ref f) => f.metadata(),
+        }
     }
 
     /// If `self` is a file, returns `Some` of a reference to the file.

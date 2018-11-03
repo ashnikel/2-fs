@@ -1,5 +1,5 @@
 use std::io;
-use std::path::Path;
+use std::path::{Component, Path};
 use std::mem::size_of;
 use std::cmp::min;
 
@@ -17,7 +17,7 @@ pub struct VFat {
     sectors_per_fat: u32,
     fat_start_sector: u64,
     data_start_sector: u64,
-    root_dir_cluster: Cluster,
+    pub root_dir_cluster: Cluster,
 }
 
 impl VFat {
@@ -83,7 +83,7 @@ impl VFat {
         }
 
         match self.fat_entry(cluster)?.status() {
-            Status::Eoc(eoc) => {
+            Status::Eoc(_eoc) => {
                 read += self.read_cluster(cluster, 0, &mut buf[read..])?;
             }
             Status::Free => {
@@ -104,7 +104,7 @@ impl VFat {
                     "can't read from reserved sector",
                 ))
             }
-            Status::Data(next_cluster) => unreachable!(),
+            Status::Data(_next_cluster) => unreachable!(),
         }
 
         Ok(read)
@@ -129,12 +129,29 @@ impl VFat {
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {
-    type File = ::traits::Dummy;
-    type Dir = ::traits::Dummy;
-    type Entry = ::traits::Dummy;
+    type File = File;
+    type Dir = Dir;
+    type Entry = Entry;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        use traits::Entry;
+        use vfat::Entry as VFatEntry;
+
+        let mut cur_dir = VFatEntry::Dir(Dir::root(self.clone()));
+
+        for comp in path.as_ref().components() {
+            match comp {
+                Component::Normal(name) => {
+                    cur_dir = cur_dir.as_dir().ok_or(io::Error::new(io::ErrorKind::NotFound, "File not found"))?
+                    .find(name)?
+                }
+                Component::RootDir => { },
+                Component::CurDir => unimplemented!("CurDir"),
+                Component::ParentDir => unimplemented!("ParentDir"),
+                Component::Prefix(_) => unimplemented!("Prefix"),
+            }
+        }
+        Ok(cur_dir)
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {

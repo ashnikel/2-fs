@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
-use std::borrow::Cow;
+// use std::borrow::Cow;
 use std::io;
 
 use traits;
@@ -80,10 +80,6 @@ impl VFatUnknownDirEntry {
     pub fn is_lfn(&self) -> bool {
         self.attr == 0x0F
     }
-
-    pub fn is_regular(&self) -> bool {
-        !self.is_lfn()
-    }
 }
 
 impl VFatRegularDirEntry {
@@ -116,10 +112,6 @@ impl VFatRegularDirEntry {
 }
 
 impl VFatLfnDirEntry {
-    pub fn is_last(&self) -> bool {
-        self.seq_number & (1 << 6) != 0
-    }
-
     pub fn is_deleted(&self) -> bool {
         self.seq_number == 0xE5
     }
@@ -219,12 +211,21 @@ impl Iterator for EntryIter {
 }
 
 impl Dir {
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    fn metadata(&self) -> &Metadata {
+    pub fn metadata(&self) -> &Metadata {
         &self.metadata
+    }
+
+    pub fn root(vfat: Shared<VFat>) -> Dir {
+        Dir {
+            name: String::from("/"),
+            cluster: vfat.borrow().root_dir_cluster,
+            vfat: vfat.clone(),
+            metadata: Metadata::default(),
+        }
     }
 
     /// Finds the entry named `name` in `self` and returns it. Comparison is
@@ -238,7 +239,16 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        unimplemented!("Dir::find()")
+        let name = name.as_ref().to_str().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;
+
+        use traits::{Dir, Entry};
+        for entry in self.entries()? {
+            if entry.name().eq_ignore_ascii_case(name) {
+                return Ok(entry);
+            }
+        }
+
+        Err(io::Error::new(io::ErrorKind::NotFound, "Entry not found"))
     }
 }
 
