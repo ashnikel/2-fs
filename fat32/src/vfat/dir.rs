@@ -132,7 +132,7 @@ pub fn ucs_2_to_string(arr: &[u16]) -> String {
             .take_while(|x| **x != 0x0000 && **x != 0xFFFF)
             .cloned(),
     ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-    .collect::<String>()
+        .collect::<String>()
 }
 
 pub fn ascii_to_string(arr: &[u8]) -> Option<String> {
@@ -197,14 +197,14 @@ impl Iterator for EntryIter {
             let cluster = regular.cluster();
 
             if regular.is_dir() {
-                return Some(Entry::Dir(Dir{
+                return Some(Entry::Dir(Dir {
                     name,
                     cluster,
                     vfat: self.vfat.clone(),
                     metadata,
                 }));
             } else {
-                return Some(Entry::File(File{
+                return Some(Entry::File(File {
                     name,
                     cluster,
                     vfat: self.vfat.clone(),
@@ -219,6 +219,14 @@ impl Iterator for EntryIter {
 }
 
 impl Dir {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
     /// Finds the entry named `name` in `self` and returns it. Comparison is
     /// case-insensitive.
     ///
@@ -234,19 +242,24 @@ impl Dir {
     }
 }
 
-// impl traits::Dir for Dir {
-//     /// The type of entry stored in this directory.
-//     type Entry = Entry;
+impl traits::Dir for Dir {
+    /// The type of entry stored in this directory.
+    type Entry = Entry;
 
-//     /// An type that is an iterator over the entries in this directory.
-//     type Iter = EntryIter;
+    /// An type that is an iterator over the entries in this directory.
+    type Iter = EntryIter;
 
-//     /// Returns an interator over the entries in this directory.
-//     fn entries(&self) -> io::Result<Self::Iter> {
-//         let mut buf = Vec::new();
-//         self.vfat.borrow_mut().read_chain(self.cluster, &mut buf)?;
-//     }
-// }
+    /// Returns an interator over the entries in this directory.
+    fn entries(&self) -> io::Result<Self::Iter> {
+        let mut buf = Vec::new();
+        self.vfat.borrow_mut().read_chain(self.cluster, &mut buf)?;
+        Ok(EntryIter {
+            entries: unsafe { buf.cast() },
+            index: 0,
+            vfat: self.vfat.clone(),
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -10,4 +10,54 @@ pub enum Entry {
 
 // TODO: Implement any useful helper methods on `Entry`.
 
-// FIXME: Implement `traits::Entry` for `Entry`.
+impl traits::Entry for Entry {
+    type File = File;
+    type Dir = Dir;
+    type Metadata = Metadata;
+
+    /// The name of the file or directory corresponding to this entry.
+    fn name(&self) -> &str {
+        self.name()
+    }
+
+    /// The metadata associated with the entry.
+    fn metadata(&self) -> &Self::Metadata {
+        self.metadata()
+    }
+
+    /// If `self` is a file, returns `Some` of a reference to the file.
+    /// Otherwise returns `None`.
+    fn as_file(&self) -> Option<&Self::File> {
+        match self {
+            &Entry::File(ref f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// If `self` is a directory, returns `Some` of a reference to the
+    /// directory. Otherwise returns `None`.
+    fn as_dir(&self) -> Option<&Self::Dir> {
+        match self {
+            &Entry::Dir(ref d) => Some(d),
+            _ => None,
+        }
+    }
+
+    /// If `self` is a file, returns `Some` of the file. Otherwise returns
+    /// `None`.
+    fn into_file(self) -> Option<Self::File> {
+        match self {
+            Entry::File(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// If `self` is a directory, returns `Some` of the directory. Otherwise
+    /// returns `None`.
+    fn into_dir(self) -> Option<Self::Dir> {
+        match self {
+            Entry::Dir(d) => Some(d),
+            _ => None,
+        }
+    }
+}
