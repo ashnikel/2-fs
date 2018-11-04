@@ -1,4 +1,4 @@
-// use std::cmp::{max, min};
+use std::cmp::min;
 use std::io::{self, SeekFrom};
 
 use traits;
@@ -10,25 +10,11 @@ pub struct File {
     pub cluster: Cluster,
     pub vfat: Shared<VFat>,
     pub metadata: Metadata,
-    pub size: u32,
+    pub size: usize,
+    pub read_ptr: usize,
 }
 
 impl File {
-    pub fn new(
-        name: String,
-        vfat: Shared<VFat>,
-        cluster: Cluster,
-        metadata: Metadata,
-        size: u32,
-    ) -> Self {
-        File {
-            name,
-            vfat,
-            cluster,
-            metadata,
-            size,
-        }
-    }
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -52,8 +38,23 @@ impl traits::File for File {
 }
 
 impl io::Read for File {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.size == 0 {
+            return Ok(0);
+        }
+
+        let mut buf_vec = Vec::new();
+        self.vfat
+            .borrow_mut()
+            .read_chain(self.cluster, &mut buf_vec)?;
+        let left_to_read = self.size - self.read_ptr;
+        let bytes_to_copy = min(left_to_read, buf.len());
+
+        buf[..bytes_to_copy]
+            .copy_from_slice(&buf_vec[self.read_ptr..self.read_ptr + bytes_to_copy]);
+        self.read_ptr += bytes_to_copy;
+
+        Ok(bytes_to_copy)
     }
 }
 

@@ -159,7 +159,8 @@ impl Iterator for EntryIter {
                 lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
                 self.index += 1;
                 unknown_entry = unsafe { self.entries[self.index].unknown };
-            } else { // regular entry
+            } else {
+                // regular entry
                 let regular = unsafe { self.entries[self.index].regular };
 
                 let name = if lfn_found {
@@ -194,7 +195,8 @@ impl Iterator for EntryIter {
                         cluster,
                         vfat: self.vfat.clone(),
                         metadata,
-                        size: regular.size,
+                        size: regular.size as usize,
+                        read_ptr: 0,
                     }));
                 }
             }
