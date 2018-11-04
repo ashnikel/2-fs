@@ -29,7 +29,8 @@ impl VFat {
         let sector = mbr.first_fat32()?.sector();
         let ebpb = BiosParameterBlock::from(&mut device, sector)?;
         let fat_start_sector = sector + ebpb.sectors_reserved as u64;
-        let data_start_sector = fat_start_sector + ebpb.fats_number as u64 * ebpb.sectors_per_fat as u64;
+        let data_start_sector =
+            fat_start_sector + ebpb.fats_number as u64 * ebpb.sectors_per_fat as u64;
 
         let partition = Partition {
             start: sector,
@@ -81,7 +82,10 @@ impl VFat {
 
         while let Status::Data(next_cluster) = self.fat_entry(cluster)?.status() {
             let buf_len = buf.len();
-            buf.resize(buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize, 0);
+            buf.resize(
+                buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
+                0,
+            );
             read += self.read_cluster(cluster, 0, &mut buf[read..])?;
             cluster = next_cluster;
         }
@@ -89,7 +93,10 @@ impl VFat {
         match self.fat_entry(cluster)?.status() {
             Status::Eoc(_eoc) => {
                 let buf_len = buf.len();
-                buf.resize(buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize, 0);
+                buf.resize(
+                    buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize,
+                    0,
+                );
                 read += self.read_cluster(cluster, 0, &mut buf[read..])?;
             }
             Status::Free => {
@@ -120,8 +127,7 @@ impl VFat {
     /// reference points directly into a cached sector.
     pub fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
         let cluster_index = cluster.fat_index() as usize;
-        let fat_entries_per_sector =
-            self.bytes_per_sector as usize / size_of::<FatEntry>();
+        let fat_entries_per_sector = self.bytes_per_sector as usize / size_of::<FatEntry>();
 
         let sector_of_fat_entry = cluster_index / fat_entries_per_sector;
 
@@ -148,10 +154,12 @@ impl<'a> FileSystem for &'a Shared<VFat> {
         for comp in path.as_ref().components() {
             match comp {
                 Component::Normal(name) => {
-                    cur_dir = cur_dir.as_dir().ok_or(io::Error::new(io::ErrorKind::NotFound, "File not found"))?
-                    .find(name)?
+                    cur_dir = cur_dir
+                        .as_dir()
+                        .ok_or(io::Error::new(io::ErrorKind::NotFound, "File not found"))?
+                        .find(name)?
                 }
-                Component::RootDir => { },
+                Component::RootDir => {}
                 Component::CurDir => unimplemented!("CurDir"),
                 Component::ParentDir => unimplemented!("ParentDir"),
                 Component::Prefix(_) => unimplemented!("Prefix"),

@@ -111,12 +111,6 @@ impl VFatRegularDirEntry {
     }
 }
 
-impl VFatLfnDirEntry {
-    pub fn is_deleted(&self) -> bool {
-        self.seq_number == 0xE5
-    }
-}
-
 pub fn ucs_2_to_string(arr: &[u16]) -> String {
     // File name in LFN entry can be terminated using 0x0000 or 0xFFFF
     decode_utf16(
@@ -149,19 +143,6 @@ impl Iterator for EntryIter {
         let mut lfn_name = [0u16; 13 * 20];
         let mut lfn_found = false;
 
-        while unknown_entry.is_lfn() {
-            let lfn = unsafe { self.entries[self.index].long_filename };
-            if !lfn.is_deleted() {
-                lfn_found = true;
-                let pos = ((lfn.seq_number & 0b11111) as usize - 1) * 13;
-                lfn_name[pos..pos + 5].copy_from_slice(&lfn.name1);
-                lfn_name[pos + 5..pos + 11].copy_from_slice(&lfn.name2);
-                lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
-            }
-            self.index += 1;
-            unknown_entry = unsafe { self.entries[self.index].unknown };
-        }
-
         while !unknown_entry.is_end() {
             if unknown_entry.is_deleted() {
                 self.index += 1;
@@ -169,42 +150,53 @@ impl Iterator for EntryIter {
                 continue;
             }
 
-            let regular = unsafe { self.entries[self.index].regular };
+            if unknown_entry.is_lfn() {
+                let lfn = unsafe { self.entries[self.index].long_filename };
+                lfn_found = true;
+                let pos = ((lfn.seq_number & 0b11111) as usize - 1) * 13;
+                lfn_name[pos..pos + 5].copy_from_slice(&lfn.name1);
+                lfn_name[pos + 5..pos + 11].copy_from_slice(&lfn.name2);
+                lfn_name[pos + 11..pos + 13].copy_from_slice(&lfn.name3);
+                self.index += 1;
+                unknown_entry = unsafe { self.entries[self.index].unknown };
+            } else { // regular entry
+                let regular = unsafe { self.entries[self.index].regular };
 
-            let name = if lfn_found {
-                ucs_2_to_string(&lfn_name)
-            } else {
-                match ascii_to_string(&regular.ext) {
-                    None => ascii_to_string(&regular.name).unwrap(),
-                    Some(ext) => {
-                        let mut s = ascii_to_string(&regular.name).unwrap();
-                        s.push('.');
-                        s.push_str(&ext);
-                        s
+                let name = if lfn_found {
+                    ucs_2_to_string(&lfn_name)
+                } else {
+                    match ascii_to_string(&regular.ext) {
+                        None => ascii_to_string(&regular.name).unwrap(),
+                        Some(ext) => {
+                            let mut s = ascii_to_string(&regular.name).unwrap();
+                            s.push('.');
+                            s.push_str(&ext);
+                            s
+                        }
                     }
+                };
+
+                let metadata = regular.metadata();
+                let cluster = regular.cluster();
+
+                self.index += 1;
+
+                if regular.is_dir() {
+                    return Some(Entry::Dir(Dir {
+                        name,
+                        cluster,
+                        vfat: self.vfat.clone(),
+                        metadata,
+                    }));
+                } else {
+                    return Some(Entry::File(File {
+                        name,
+                        cluster,
+                        vfat: self.vfat.clone(),
+                        metadata,
+                        size: regular.size,
+                    }));
                 }
-            };
-
-            let metadata = regular.metadata();
-            let cluster = regular.cluster();
-
-            self.index += 1;
-
-            if regular.is_dir() {
-                return Some(Entry::Dir(Dir {
-                    name,
-                    cluster,
-                    vfat: self.vfat.clone(),
-                    metadata,
-                }));
-            } else {
-                return Some(Entry::File(File {
-                    name,
-                    cluster,
-                    vfat: self.vfat.clone(),
-                    metadata,
-                    size: regular.size,
-                }));
             }
         }
 
@@ -241,7 +233,9 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        let name = name.as_ref().to_str().ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;
+        let name = name.as_ref()
+            .to_str()
+            .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;
 
         use traits::{Dir, Entry};
         for entry in self.entries()? {
