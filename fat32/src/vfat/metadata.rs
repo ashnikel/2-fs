@@ -45,12 +45,12 @@ impl traits::Timestamp for Timestamp {
     ///
     /// January is 1, Feburary is 2, ..., December is 12.
     fn month(&self) -> u8 {
-        ((self.date.0 & 0b0000_0001_1110_0000) >> 5) as u8 + 1
+        ((self.date.0 & 0b0000_0001_1110_0000) >> 5) as u8
     }
 
     /// The calendar day, starting at 1. Always in range [1, 31].
     fn day(&self) -> u8 {
-        (self.date.0 & 0b0000_0000_0001_1111) as u8 + 1
+        (self.date.0 & 0b0000_0000_0001_1111) as u8
     }
 
     /// The 24-hour hour. Always in range [0, 24).

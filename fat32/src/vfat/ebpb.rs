@@ -8,10 +8,10 @@ pub struct BiosParameterBlock {
     // BPB
     jmp: [u8; 3],
     oem_id: [u8; 8],
-    bytes_per_sector: u16,
-    sectors_per_cluster: u8,
-    sectors_reserved: u16,
-    fats_number: u8,
+    pub bytes_per_sector: u16,
+    pub sectors_per_cluster: u8,
+    pub sectors_reserved: u16,
+    pub fats_number: u8,
     max_dir_entries: u16,
     logical_sectors_small: u16,
     fat_id: u8,
@@ -21,10 +21,10 @@ pub struct BiosParameterBlock {
     hidden_sectors: u32,
     logical_sectors_big: u32,
     // EBPB
-    sectors_per_fat: u32,
+    pub sectors_per_fat: u32,
     flags: u16,
     fat_ver: u16,
-    root_dir_cluster: u32,
+    pub root_dir_cluster: u32,
     fsinfo_sector: u16,
     backup_boot_sector: u16,
     reserved: [u8; 12],
@@ -57,30 +57,6 @@ impl BiosParameterBlock {
         }
 
         Ok(ebpb)
-    }
-
-    pub fn bytes_per_sector(&self) -> u16 {
-        self.bytes_per_sector
-    }
-
-    pub fn sectors_per_cluster(&self) -> u8 {
-        self.sectors_per_cluster
-    }
-
-    pub fn sectors_per_fat(&self) -> u32 {
-        self.sectors_per_fat
-    }
-
-    pub fn fat_start_sector(&self) -> u64 {
-        self.sectors_reserved as u64
-    }
-
-    pub fn data_start_sector(&self) -> u64 {
-        self.fat_start_sector() + self.fats_number as u64 * self.sectors_per_fat() as u64
-    }
-
-    pub fn root_dir_cluster(&self) -> u32 {
-        self.root_dir_cluster
     }
 }
 

@@ -28,22 +28,24 @@ impl VFat {
         let mbr = MasterBootRecord::from(&mut device)?;
         let sector = mbr.first_fat32()?.sector();
         let ebpb = BiosParameterBlock::from(&mut device, sector)?;
+        let fat_start_sector = sector + ebpb.sectors_reserved as u64;
+        let data_start_sector = fat_start_sector + ebpb.fats_number as u64 * ebpb.sectors_per_fat as u64;
 
         let partition = Partition {
             start: sector,
-            sector_size: ebpb.bytes_per_sector() as u64,
+            sector_size: ebpb.bytes_per_sector as u64,
         };
 
         let cache_device = CachedDevice::new(device, partition);
 
         Ok(Shared::new(VFat {
             device: cache_device,
-            bytes_per_sector: ebpb.bytes_per_sector(),
-            sectors_per_cluster: ebpb.sectors_per_cluster(),
-            sectors_per_fat: ebpb.sectors_per_fat(),
-            fat_start_sector: ebpb.fat_start_sector(),
-            data_start_sector: ebpb.data_start_sector(),
-            root_dir_cluster: Cluster::from(ebpb.root_dir_cluster()),
+            bytes_per_sector: ebpb.bytes_per_sector,
+            sectors_per_cluster: ebpb.sectors_per_cluster,
+            sectors_per_fat: ebpb.sectors_per_fat,
+            fat_start_sector: sector + ebpb.sectors_reserved as u64,
+            data_start_sector: data_start_sector,
+            root_dir_cluster: Cluster::from(ebpb.root_dir_cluster),
         }))
     }
 
@@ -78,12 +80,16 @@ impl VFat {
         let mut read = 0;
 
         while let Status::Data(next_cluster) = self.fat_entry(cluster)?.status() {
+            let buf_len = buf.len();
+            buf.resize(buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize, 0);
             read += self.read_cluster(cluster, 0, &mut buf[read..])?;
             cluster = next_cluster;
         }
 
         match self.fat_entry(cluster)?.status() {
             Status::Eoc(_eoc) => {
+                let buf_len = buf.len();
+                buf.resize(buf_len + self.bytes_per_sector as usize * self.sectors_per_cluster as usize, 0);
                 read += self.read_cluster(cluster, 0, &mut buf[read..])?;
             }
             Status::Free => {
@@ -115,7 +121,7 @@ impl VFat {
     pub fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
         let cluster_index = cluster.fat_index() as usize;
         let fat_entries_per_sector =
-            self.bytes_per_sector as usize / ::std::mem::size_of::<FatEntry>();
+            self.bytes_per_sector as usize / size_of::<FatEntry>();
 
         let sector_of_fat_entry = cluster_index / fat_entries_per_sector;
 

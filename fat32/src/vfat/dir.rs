@@ -188,6 +188,8 @@ impl Iterator for EntryIter {
             let metadata = regular.metadata();
             let cluster = regular.cluster();
 
+            self.index += 1;
+
             if regular.is_dir() {
                 return Some(Entry::Dir(Dir {
                     name,

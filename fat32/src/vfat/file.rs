@@ -14,6 +14,16 @@ pub struct File {
 }
 
 impl File {
+    pub fn new(name: String, vfat: Shared<VFat>, cluster: Cluster,
+               metadata: Metadata, size: u32) -> Self {
+        File {
+            name,
+            vfat,
+            cluster,
+            metadata,
+            size,
+        }
+    }
     pub fn name(&self) -> &str {
         &self.name
     }
