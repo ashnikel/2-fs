@@ -4,13 +4,18 @@ use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
 
-use vfat::{BiosParameterBlock, Shared, VFat};
 use mbr::{MasterBootRecord, PartitionEntry, CHS};
 use traits::*;
+use vfat::{BiosParameterBlock, Shared, VFat};
 
 macro check_size($T:ty, $size:expr) {
-    assert_eq!(::std::mem::size_of::<$T>(), $size,
-        "'{}' does not have the expected size of {}", stringify!($T), $size);
+    assert_eq!(
+        ::std::mem::size_of::<$T>(),
+        $size,
+        "'{}' does not have the expected size of {}",
+        stringify!($T),
+        $size
+    );
 }
 
 macro expect_variant($e:expr, $variant:pat $(if $($cond:tt)*)*) {
@@ -25,8 +30,11 @@ macro resource($name:expr) {{
     match ::std::fs::File::open(path) {
         Ok(file) => file,
         Err(e) => {
-            eprintln!("\nfailed to find assignment 2 resource '{}': {}\n\
-                       => perhaps you need to run 'make fetch'?", $name, e);
+            eprintln!(
+                "\nfailed to find assignment 2 resource '{}': {}\n\
+                 => perhaps you need to run 'make fetch'?",
+                $name, e
+            );
             panic!("missing resource");
         }
     }
@@ -49,7 +57,8 @@ macro assert_hash_eq($name:expr, $actual:expr, $expected:expr) {
 macro hash_for($name:expr) {{
     let mut file = resource!(concat!("hashes/", $name));
     let mut string = String::new();
-    file.read_to_string(&mut string).expect("read hash to string");
+    file.read_to_string(&mut string)
+        .expect("read hash to string");
     string
 }}
 
@@ -269,8 +278,8 @@ fn test_all_dir_entries() {
 }
 
 fn hash_file<T: File>(hash: &mut String, mut file: T) -> ::std::fmt::Result {
-    use std::fmt::Write;
     use std::collections::hash_map::DefaultHasher;
+    use std::fmt::Write;
     use std::hash::Hasher;
     use tests::rand::distributions::{Range, Sample};
 
@@ -308,7 +317,8 @@ fn hash_files_recursive<P: AsRef<Path>>(
     path: P,
 ) -> ::std::fmt::Result {
     let path = path.as_ref();
-    let mut entries = vfat.open_dir(path)
+    let mut entries = vfat
+        .open_dir(path)
         .expect("directory")
         .entries()
         .expect("entries interator")

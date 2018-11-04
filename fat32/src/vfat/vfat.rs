@@ -1,13 +1,13 @@
-use std::io;
-use std::path::{Component, Path};
-use std::mem::size_of;
 use std::cmp::min;
+use std::io;
+use std::mem::size_of;
+use std::path::{Component, Path};
 
-use util::SliceExt;
 use mbr::MasterBootRecord;
-use vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Shared, Status};
-use vfat::{BiosParameterBlock, CachedDevice, Partition};
 use traits::{BlockDevice, FileSystem};
+use util::SliceExt;
+use vfat::{BiosParameterBlock, CachedDevice, Partition};
+use vfat::{Cluster, Dir, Entry, Error, FatEntry, File, Shared, Status};
 
 #[derive(Debug)]
 pub struct VFat {
@@ -45,7 +45,7 @@ impl VFat {
             sectors_per_cluster: ebpb.sectors_per_cluster,
             sectors_per_fat: ebpb.sectors_per_fat,
             fat_start_sector: sector + ebpb.sectors_reserved as u64,
-            data_start_sector: data_start_sector,
+            data_start_sector,
             root_dir_cluster: Cluster::from(ebpb.root_dir_cluster),
         }))
     }
@@ -131,7 +131,8 @@ impl VFat {
 
         let sector_of_fat_entry = cluster_index / fat_entries_per_sector;
 
-        let sector = self.device
+        let sector = self
+            .device
             .get(self.fat_start_sector + sector_of_fat_entry as u64)?;
         let fat_entries: &[FatEntry] = unsafe { sector.cast() };
 

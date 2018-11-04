@@ -88,10 +88,10 @@ impl MasterBootRecord {
                 return Ok(partition);
             }
         }
-        return Err(io::Error::new(
+        Err(io::Error::new(
             io::ErrorKind::Other,
             "FAT32 partition not found",
-        ));
+        ))
     }
 }
 
@@ -114,8 +114,8 @@ impl fmt::Debug for MasterBootRecord {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn check_mbr_too_small() {

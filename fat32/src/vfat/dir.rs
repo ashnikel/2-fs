@@ -1,12 +1,12 @@
-use std::ffi::OsStr;
 use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use std::ffi::OsStr;
 // use std::borrow::Cow;
 use std::io;
 
 use traits;
 use util::VecExt;
-use vfat::{Cluster, Entry, File, Shared, VFat};
 use vfat::{Attributes, Date, Metadata, Time, Timestamp};
+use vfat::{Cluster, Entry, File, Shared, VFat};
 
 #[derive(Debug)]
 pub struct Dir {
@@ -117,12 +117,14 @@ pub fn ucs_2_to_string(arr: &[u16]) -> String {
         arr.iter()
             .take_while(|x| **x != 0x0000 && **x != 0xFFFF)
             .cloned(),
-    ).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-        .collect::<String>()
+    )
+    .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+    .collect::<String>()
 }
 
 pub fn ascii_to_string(arr: &[u8]) -> Option<String> {
-    let s = arr.iter()
+    let s = arr
+        .iter()
         .take_while(|x| **x != 0x00 && **x != 0x20)
         .map(|&c| c as char)
         .collect::<String>();
@@ -235,7 +237,8 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        let name = name.as_ref()
+        let name = name
+            .as_ref()
             .to_str()
             .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;
 
@@ -285,7 +288,7 @@ mod tests {
     #[test]
     fn test_ucs_2_to_string() {
         let arr = [
-            0xD834, 0x041F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442, 0xDD1E, 0x0000, 0x0072
+            0xD834, 0x041F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442, 0xDD1E, 0x0000, 0x0072,
         ];
         assert_eq!(ucs_2_to_string(&arr), "�Привет�".to_string());
     }

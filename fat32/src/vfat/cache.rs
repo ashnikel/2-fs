@@ -1,6 +1,6 @@
-use std::{fmt, io};
 use std::cmp::min;
 use std::collections::HashMap;
+use std::{fmt, io};
 
 use traits::BlockDevice;
 
@@ -52,7 +52,7 @@ impl CachedDevice {
         CachedDevice {
             device: Box::new(device),
             cache: HashMap::new(),
-            partition: partition,
+            partition,
         }
     }
 
