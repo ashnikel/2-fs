@@ -83,6 +83,11 @@ impl traits::Metadata for Metadata {
         self.attr.0 & 0x02 == 0x02
     }
 
+    /// Whether the entry is volume id
+    fn volume_id(&self) -> bool {
+        self.attr.0 & 0x08 == 0x08
+    }
+
     /// The timestamp when the entry was created.
     fn created(&self) -> Self::Timestamp {
         self.created
